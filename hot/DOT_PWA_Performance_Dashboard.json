@@ -51,9 +51,10 @@
               "settings": {
                 "content": {
                   "settings": {
-                    "content": "# DOT Backend Performance Dashboard",
+                    "content": "# DOT RU Storefront Performance Dashboard",
                     "title": "",
-                    "subtitle": ""
+                    "subtitle": "",
+                    "markdownUri": null
                   }
                 }
               }
@@ -69,8 +70,8 @@
             "metadata": {
               "inputs": [
                 {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
@@ -79,7 +80,7 @@
                 },
                 {
                   "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=5m;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where client_Type != \"Browser\" ;\ndataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99) by operation_Name\n| union(dataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99)\n| extend operation_Name=\"Overall\")\n| order by count_ desc\n| limit 7"
+                  "value": "let timeRange = 1d;\nlet samples = 1000000;\nlet pageDurationThreshold = 3600s;\nlet allEvents = union pageViews\n| where timestamp > ago(timeRange);\nlet allInterestingEvents = allEvents;\nlet sampledSessions = materialize(allInterestingEvents\n| summarize by session_Id\n| sample samples\n| summarize makelist(session_Id, samples));\nlet data = allInterestingEvents\n| where session_Id in (sampledSessions)\n| project session_Id, timestamp, name\n| join kind= inner\n(\n    allEvents\n    | where session_Id in (sampledSessions)\n    | project session_Id, timestamp\n)\non session_Id\n| project session_Id, TimeDiff = timestamp  - timestamp1, name, timestamp\n| where TimeDiff > 0s and TimeDiff <= pageDurationThreshold\n| summarize SecondsSpentOnPage = min(TimeDiff) / 1s by session_Id, name, timestamp;\ndata\n| summarize Instances = count(), (Median, p75, p90) = percentiles(SecondsSpentOnPage, 50, 75, 90), Mean = avg(SecondsSpentOnPage) by name\n| extend rank = 2, name = strcat('* ', name)\n| union (data\n| summarize Instances = count(), (Median, p75, p90) = percentiles(SecondsSpentOnPage, 50, 75, 90), Mean = avg(SecondsSpentOnPage)\n| extend name = '* Overall', rank = 1)\n| order by rank asc, Median desc\n| project-away rank\n| project ['Page Name'] = name, ['Sampled Page Views'] = Instances, ['Median (seconds)'] = round(Median, 1), ['75th Percentile (seconds)'] = round(p75, 1), ['90th Percentile (seconds)'] = round(p90, 1), ['Mean (seconds)'] = round(Mean, 1)\n"
                 },
                 {
                   "name": "Version",
@@ -87,11 +88,11 @@
                 },
                 {
                   "name": "PartId",
-                  "value": "1cb7836b-48cd-49d8-828d-f54f275753be"
+                  "value": "12bb2791-8a90-4cfa-bb1d-784b3f9ac67b"
                 },
                 {
                   "name": "PartTitle",
-                  "value": "Analysis of API, Trends, TOP API Call"
+                  "value": "Analysis of Page Views"
                 },
                 {
                   "name": "PartSubTitle",
@@ -125,20 +126,8 @@
               "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
               "settings": {
                 "content": {
-                  "PartTitle": "Analysis of API, Trends, TOP API Call",
-                  "PartSubTitle": "",
-                  "Query": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=5m;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where client_Type != \"Browser\" ;\ndataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99) by operation_Name\n| union(dataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99)\n| extend operation_Name=\"Overall\")\n| order by count_ desc\n| limit 7",
-                  "GridColumnsWidth": {
-                    "operation_Name": "365px",
-                    "count_": "78px",
-                    "avg_duration_ms": "139px",
-                    "percentile_duration_50": "156px"
-                  }
+                  "PartTitle": "Analysis of Page Views"
                 }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
               }
             }
           },
@@ -158,8 +147,8 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
+                            "id": "[parameters('public-appInsight')]"
+                          },
                           "name": "availabilityResults/availabilityPercentage",
                           "aggregationType": 4,
                           "namespace": "microsoft.insights/components",
@@ -193,7 +182,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
+                            "id": "[parameters('public-appInsight')]",
                             "menuid": "availability"
                           }
                         }
@@ -214,8 +203,8 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
+                            "id": "[parameters('public-appInsight')]"
+                          },
                           "name": "availabilityResults/availabilityPercentage",
                           "aggregationType": 4,
                           "namespace": "microsoft.insights/components",
@@ -250,7 +239,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
+                            "id": "[parameters('public-appInsight')]",
                             "menuid": "availability"
                           }
                         }
@@ -265,14 +254,828 @@
             "position": {
               "x": 0,
               "y": 5,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\nlet dataset=customEvents\\n    | where timestamp {TimeRange}\\n    | where name == \\\"LoginFullResponseTime\\\"\\n    | extend durationSec = round(tolong(customDimensions.duration)/1000, 3);\\ndataset\\n| summarize SEC=avg(durationSec) by bin(timestamp, timeGrain)\\n//| summarize MAX=max(duration), AVG=avg(customDimensions.duration/1000), MINIMUM=min(duration) by bin(timestamp, timeGrain)\\n| render linechart with(title=\\\"Users login performance\\\", legend=visible)\\n\",\"size\":1,\"aggregation\":3,\"title\":\"Users login performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "4": {
+            "position": {
+              "x": 6,
+              "y": 5,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\r\\nlet dataset=pageViews\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"HomePageLoadingTime\\\"\\r\\n    | extend duration = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Users HomePage performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users HomePage performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "5": {
+            "position": {
+              "x": 12,
+              "y": 5,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=15min;\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"CatalogLoadingTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC=avg(duration) by bin(timestamp,timeGrain)\\r\\n| render linechart with(title=\\\"Users Catalog browsing performance\\\",ytitle=\\\"Sec\\\")\",\"size\":0,\"aggregation\":3,\"title\":\"Users Catalog browsing performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "6": {
+            "position": {
+              "x": 0,
+              "y": 9,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=30min;\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name contains \\\"CartChanged\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000, 3);\\r\\ndataset\\r\\n| summarize SEC=avg(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users Cart operation performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users Cart operation performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "7": {
+            "position": {
+              "x": 6,
+              "y": 9,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=15min;\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateResponseTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Users checkout performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users checkout performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "8": {
+            "position": {
+              "x": 12,
+              "y": 9,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateFullResponseTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Users create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users create order performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "9": {
+            "position": {
+              "x": 0,
+              "y": 13,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\r\\nunion pageViews, dependencies, customEvents\\r\\n| where timestamp {TimeRange}\\r\\n| where name == 'CheckoutButtonClick' or name == 'ProductItemClick' or name == 'BrandItemClick' or name == 'SearchKeyword' or name == 'CartTotal'\\r\\n| project operation_Id, timestamp, itemType, name, url, duration, client_Type, customDimensions, customMeasurements, user_Id\\r\\n| summarize Click=count(name == 'CheckoutButtonClick') by bin(timestamp, timeGrain)\\r\\n| render columnchart with(title=\\\"Checkout button click \\\", ytitle='Count', ysplit=panels, legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"CheckoutButtonClick\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "10": {
+            "position": {
+              "x": 6,
+              "y": 13,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "users/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": {
+                            "displayName": "Users"
+                          }
+                        }
+                      ],
+                      "title": "Unique Users",
+                      "titleKind": 1,
+                      "visualization": {
+                        "chartType": 1,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        }
+                      }
+                    },
+                    "version": 2
+                  }
+                },
+                {
+                  "name": "sharedTimeRange",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "users/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": {
+                            "displayName": "Users"
+                          }
+                        }
+                      ],
+                      "title": "Unique Users",
+                      "titleKind": 1,
+                      "visualization": {
+                        "chartType": 1,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        },
+                        "disablePinning": true
+                      }
+                    },
+                    "version": 2
+                  }
+                }
+              }
+            }
+          },
+          "11": {
+            "position": {
+              "x": 12,
+              "y": 13,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "client_CountryOrRegion",
+                      "type": "string"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "Users",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [
+                      {
+                        "name": "client_City",
+                        "type": "string"
+                      }
+                    ],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "8750b5c6-1db8-4309-84ba-a626a2786d5f",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "value": "P1D",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "DraftRequestParameters",
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "union pageViews, customEvents\n| where timestamp between((datetime(2020))..now())\n| where client_City != ''\n| summarize Users=dcount(user_Id) by client_City, client_CountryOrRegion, bin(timestamp, 1h)\n| order by timestamp asc\n| render barchart\n\n",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "StackedColumn",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                                            "name": "PartSubTitle",
+                                            "value": "[parameters('public-appInsightName')]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Users per Country / City"
+                }
+              }
+            }
+          },
+          "12": {
+            "position": {
+              "x": 0,
+              "y": 17,
               "colSpan": 12,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
@@ -281,7 +1084,7 @@
                 },
                 {
                   "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=5m;\nlet dataset=dependencies\n| where timestamp > start and timestamp < end\n| where client_Type != \"Browser\" ;\ndataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99) by target\n| union(dataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99))\n| order by avg_duration_ms desc\n| limit 7"
+                  "value": "let start = startofday(ago(1d));\nunion customEvents, pageViews\n| where timestamp >= start\n| where name in ('*') or ('*' in ('*')) or ('#' in ('*') and itemType == 'pageView') or ('&' in ('*') and itemType == 'customEvent')\n| summarize Metric = dcount(session_Id) by bin(timestamp, 2h)\n| extend Hour = hourofday(timestamp), WeekDay = dayofweek(timestamp)\n| where 'No' == 'No' or (WeekDay != 0d and WeekDay != 6d)\n| extend HourDisplay = case(Hour == 0, '12am', Hour < 12, strcat(Hour, 'am'), Hour == 12, '12pm', strcat(Hour - 12, 'pm'))\n| extend Day = strcat(monthofyear(timestamp), '/', dayofmonth(timestamp), ' - ', case(WeekDay == 0d, 'Sun', WeekDay == 1d, 'Mon', WeekDay == 2d, 'Tue', WeekDay == 3d, 'Wed', WeekDay == 4d, 'Thu', WeekDay == 5d, 'Fri', 'Sat'))\n| order by Hour asc\n| extend Day1 = bin(timestamp, 1d)\n| project-away timestamp, WeekDay, Hour\n| serialize\n| evaluate pivot(HourDisplay, sum(Metric))\n| order by Day1 asc\n| project-away Day1\n"
                 },
                 {
                   "name": "Version",
@@ -289,15 +1092,15 @@
                 },
                 {
                   "name": "PartId",
-                  "value": "488ca1c4-4615-4a4a-9958-943b41133689"
+                  "value": "81cb5882-2e65-4cae-b4e7-db1036858399"
                 },
                 {
                   "name": "PartTitle",
-                  "value": "Dependency Trends, TOP calls"
+                  "value": "Usage by hours of the day"
                 },
                 {
-                  "name": "PartSubTitle",
-                  "value": ""
+                                            "name": "PartSubTitle",
+                                            "value": "[parameters('public-appInsightName')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -327,167 +1130,38 @@
               "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
               "settings": {
                 "content": {
-                  "PartTitle": "Dependency Trends, TOP calls",
-                  "PartSubTitle": "",
-                  "Query": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=5m;\nlet dataset=dependencies\n| where timestamp > start and timestamp < end\n| where client_Type != \"Browser\" ;\ndataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99) by target\n| union(dataset\n| summarize count_=sum(itemCount), avg_duration_ms=avg(duration), percentiles(duration, 50, 95, 99))\n| order by avg_duration_ms desc\n| limit 7",
+                  "PartTitle": "Usage by hours of the day",
                   "GridColumnsWidth": {
-                    "target": "364px",
-                    "count_": "82px",
-                    "avg_duration_ms": "143px"
+                    "Day": "72px",
+                    "12am": "70px",
+                    "2am": "64px",
+                    "4am": "64px",
+                    "6am": "64px",
+                    "8am": "64px",
+                    "10am": "68px",
+                    "12pm": "68px",
+                    "2pm": "64px",
+                    "4pm": "64px",
+                    "6pm": "64px",
+                    "8pm": "64px",
+                    "10pm": "68px"
                   }
                 }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
               }
             }
           },
-          "4": {
+          "13": {
             "position": {
               "x": 12,
-              "y": 5,
+              "y": 17,
               "colSpan": 6,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "options",
-                  "value": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/count",
-                          "aggregationType": 7,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Server requests"
-                          }
-                        }
-                      ],
-                      "title": "Server requests",
-                      "titleKind": 2,
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        }
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "performance"
-                          },
-                          "extensionName": "HubsExtension",
-                          "options": {
-                            "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                              "menuid": "performance"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "sharedTimeRange",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
-              "settings": {
-                "content": {
-                  "options": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/count",
-                          "aggregationType": 7,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Server requests"
-                          }
-                        }
-                      ],
-                      "title": "Server requests",
-                      "titleKind": 2,
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        },
-                        "disablePinning": true
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "performance"
-                          },
-                          "extensionName": "HubsExtension",
-                          "options": {
-                            "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                              "menuid": "performance"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "5": {
-            "position": {
-              "x": 0,
-              "y": 9,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
@@ -496,27 +1170,22 @@
                 },
                 {
                   "name": "Query",
-                  "value": "let apdexThreshhold = toint('3754');\nlet apdexData = pageViews\n| where timestamp > ago(1d)\n| where name in ('*') or '*' in ('*')\n| extend success = columnifexists('success', true)\n| extend Failure = iff('ConsiderFailures' == 'ConsiderFailures' and success == false, 1, 0)\n| extend InterestingDimension = iff(isempty(name)== true, 'Unknown', name)\n| where InterestingDimension in ('*') or '*' in ('*')\n| summarize AverageDuration = avg(duration), Failures = sum(Failure) by user_Id, InterestingDimension\n| extend UserExperience = case(AverageDuration <= apdexThreshhold, 'Satisfied', AverageDuration <= 4 * apdexThreshhold, 'Tolerating', 'Frustrated')\n| extend UserExperience = case(Failures > 0, \"Frustrated\", UserExperience)\n| summarize Satisfied = countif(UserExperience == 'Satisfied'), Tolerating = countif(UserExperience == 'Tolerating'), Frustrated = countif(UserExperience == 'Frustrated'), Total = count() by InterestingDimension\n| project InterestingDimension, [\"Satisfied Users\"] = Satisfied, [\"Tolerating Users\"] = Tolerating, [\"Frustrated Users\"] = Frustrated, [\"Apdex Score\"] = round((Satisfied + (Tolerating / 2.0)) / Total, 2), Total\n| extend Relevance = iff([\"Apdex Score\"] == 0, pow(Total, 1.6), Total / [\"Apdex Score\"])\n| project-rename Users = Total\n| order by Relevance desc\n| project-away Users, Relevance;\napdexData\n| extend [\"Apdex Interpretation\"] = case([\"Apdex Score\"] <= 0.5, '⛔ Unacceptable', [\"Apdex Score\"] <= 0.7, '⚠️ Poor', [\"Apdex Score\"] <= 0.85, '⚠️ Fair', [\"Apdex Score\"] <= 0.94, '✔️ Good', '✔️ Excellent')\n| project Values = InterestingDimension, [\"Apdex Score\"], [\"Apdex Interpretation\"], [\"Satisfied Users\"], [\"Tolerating Users\"], [\"Frustrated Users\"]\n"
+                  "value": "union pageViews,customEvents\n| where timestamp between((datetime(2020))..now())\n| summarize Users=dcount(user_Id) by client_Browser , bin(timestamp, 1h)\n| order by timestamp asc\n| render barchart\n"
                 },
                 {
                   "name": "Dimensions",
                   "value": {
                     "xAxis": {
-                      "name": "Values",
+                      "name": "client_Browser",
                       "type": "string"
                     },
                     "yAxis": [
                       {
-                        "name": "Apdex Score",
-                        "type": "real"
+                        "name": "Users",
+                        "type": "long"
                       }
                     ],
-                    "splitBy": [
-                      {
-                        "name": "Apdex Interpretation",
-                        "type": "string"
-                      }
-                    ],
+                    "splitBy": [],
                     "aggregation": "Sum"
                   }
                 },
@@ -526,15 +1195,15 @@
                 },
                 {
                   "name": "PartId",
-                  "value": "42f1d492-907d-4f90-b129-1b6cee15ce26"
+                  "value": "674ba85c-4e44-4fd0-b542-2a9ae2009456"
                 },
                 {
                   "name": "PartTitle",
-                  "value": "API Apdex"
+                  "value": "Users per Browser"
                 },
                 {
-                  "name": "PartSubTitle",
-                  "value": ""
+                                            "name": "PartSubTitle",
+                                            "value": "[parameters('public-appInsightName')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -542,11 +1211,7 @@
                 },
                 {
                   "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Bar"
+                  "value": "AnalyticsDonut"
                 },
                 {
                   "name": "TimeRange",
@@ -555,274 +1220,32 @@
                 {
                   "name": "DashboardId",
                   "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "isOptional": true
                 }
               ],
               "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
               "settings": {
                 "content": {
-                  "PartTitle": "API Apdex (User Satisfaction, Tolerating, Frustrated)",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Bar"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
-              }
-            }
-          },
-          "6": {
-            "position": {
-              "x": 6,
-              "y": 9,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "options",
-                  "value": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/duration",
-                          "aggregationType": 4,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Server response time"
-                          }
-                        }
-                      ],
-                      "title": "Server response time",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        }
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "extensionName": "HubsExtension",
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "performance"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "sharedTimeRange",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
-              "settings": {
-                "content": {
-                  "options": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/duration",
-                          "aggregationType": 4,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Server response time"
-                          }
-                        }
-                      ],
-                      "title": "Server response time",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        },
-                        "disablePinning": true
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "extensionName": "HubsExtension",
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "performance"
-                          }
-                        }
-                      }
-                    }
-                  }
+                  "PartTitle": "Users per Browser"
                 }
               }
             }
           },
-          "7": {
-            "position": {
-              "x": 12,
-              "y": 9,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "options",
-                  "value": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/failed",
-                          "aggregationType": 7,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Failed requests",
-                            "color": "#EC008C"
-                          }
-                        }
-                      ],
-                      "title": "Failed requests",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        }
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "extensionName": "HubsExtension",
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "failures"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "sharedTimeRange",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
-              "settings": {
-                "content": {
-                  "options": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "requests/failed",
-                          "aggregationType": 7,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Failed requests",
-                            "color": "#EC008C"
-                          }
-                        }
-                      ],
-                      "title": "Failed requests",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        },
-                        "disablePinning": true
-                      },
-                      "openBladeOnClick": {
-                        "openBlade": true,
-                        "destinationBlade": {
-                          "extensionName": "HubsExtension",
-                          "bladeName": "ResourceMenuBlade",
-                          "parameters": {
-                                                                "id": "[parameters('public-appInsight')]",
-                            "menuid": "failures"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "8": {
+          "14": {
             "position": {
               "x": 0,
-              "y": 13,
+              "y": 21,
               "colSpan": 12,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
@@ -831,7 +1254,7 @@
                 },
                 {
                   "name": "Query",
-                  "value": "let apdexThreshhold = toint('3754');\nlet failureThreshhold = 1;\nlet apdexData = pageViews\n| where timestamp > ago(1d)\n| where name in ('*') or '*' in ('*')\n| extend success = columnifexists('success', true)\n| extend Failure = iff('ConsiderFailures' == 'ConsiderFailures' and success == false, 1, 0)\n| extend InterestingDimension = iff(isempty(name)== true, 'Unknown', name)\n| where InterestingDimension in ('*') or '*' in ('*')\n| summarize AverageDuration = avg(duration), Failures = sum(Failure) by user_Id, bin(timestamp, 30m), InterestingDimension\n| extend UserExperience = case(AverageDuration <= apdexThreshhold, 'Satisfied', AverageDuration <= 4 * apdexThreshhold, 'Tolerating', 'Frustrated')\n| extend UserExperience = case(Failures >= failureThreshhold, \"Frustrated\", UserExperience)\n| summarize Satisfied = countif(UserExperience == 'Satisfied'), Tolerating = countif(UserExperience == 'Tolerating'), Total = count() by timestamp, InterestingDimension\n| project timestamp, ApdexScore = (Satisfied + (Tolerating / 2.0)) / Total, Users = Total, InterestingDimension;\nlet pageRelevance = apdexData\n| summarize [\"Apdex Score\"] = avg(ApdexScore), Users=sum(Users) by InterestingDimension\n| extend Relevance = iff([\"Apdex Score\"] == 0, 1.0 * Users * Users, Users / [\"Apdex Score\"])\n| order by Relevance desc\n| project InterestingDimension\n| take 7;\napdexData\n| join kind = leftouter (pageRelevance) on InterestingDimension\n| extend InterestingDimension = iff(isempty(InterestingDimension1) == true, 'Other', InterestingDimension)\n| project timestamp, ApdexScore, Users, InterestingDimension \n| summarize ApdexScore = avg(ApdexScore) by timestamp, InterestingDimension\n| extend ApdexScore = round(ApdexScore, 3)\n"
+                  "value": "let apdexThreshhold = toint('63');\nlet failureThreshhold = 1;\nlet apdexData = pageViews\n| where timestamp > ago(1d)\n| where name in ('*') or '*' in ('*')\n| extend success = columnifexists('success', true)\n| extend Failure = iff('ConsiderFailures' == 'ConsiderFailures' and success == false, 1, 0)\n| extend InterestingDimension = iff(isempty(name)== true, 'Unknown', name)\n| where InterestingDimension in ('*') or '*' in ('*')\n| summarize AverageDuration = avg(duration), Failures = sum(Failure) by user_Id, bin(timestamp, 30m), InterestingDimension\n| extend UserExperience = case(AverageDuration <= apdexThreshhold, 'Satisfied', AverageDuration <= 4 * apdexThreshhold, 'Tolerating', 'Frustrated')\n| extend UserExperience = case(Failures >= failureThreshhold, \"Frustrated\", UserExperience)\n| summarize Satisfied = countif(UserExperience == 'Satisfied'), Tolerating = countif(UserExperience == 'Tolerating'), Total = count() by timestamp, InterestingDimension\n| project timestamp, ApdexScore = (Satisfied + (Tolerating / 2.0)) / Total, Users = Total, InterestingDimension;\nlet pageRelevance = apdexData\n| summarize [\"Apdex Score\"] = avg(ApdexScore), Users=sum(Users) by InterestingDimension\n| extend Relevance = iff([\"Apdex Score\"] == 0, 1.0 * Users * Users, Users / [\"Apdex Score\"])\n| order by Relevance desc\n| project InterestingDimension\n| take 7;\napdexData\n| join kind = leftouter (pageRelevance) on InterestingDimension\n| extend InterestingDimension = iff(isempty(InterestingDimension1) == true, 'Other', InterestingDimension)\n| project timestamp, ApdexScore, Users, InterestingDimension \n| summarize ApdexScore = avg(ApdexScore) by timestamp, InterestingDimension\n| extend ApdexScore = round(ApdexScore, 3)\n"
                 },
                 {
                   "name": "Dimensions",
@@ -861,7 +1284,7 @@
                 },
                 {
                   "name": "PartId",
-                  "value": "8fd7591e-5fc0-4497-92df-df81712ea0e9"
+                  "value": "12253ea3-12be-49af-8b43-87af99725dc6"
                 },
                 {
                   "name": "PartTitle",
@@ -869,7 +1292,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]"
+                  "value": ""
                 },
                 {
                   "name": "resourceTypeMode",
@@ -895,126 +1318,23 @@
               "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
               "settings": {
                 "content": {
-                  "PartTitle": "Apdex Score",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Bar"
+                  "PartTitle": "Apdex Score"
                 }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
               }
             }
           },
-          "9": {
+          "15": {
             "position": {
               "x": 12,
-              "y": 13,
+              "y": 21,
               "colSpan": 6,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "options",
-                  "value": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "performanceCounters/memoryAvailableBytes",
-                          "aggregationType": 4,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Available memory"
-                          }
-                        }
-                      ],
-                      "title": "Average available memory",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "sharedTimeRange",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
-              "settings": {
-                "content": {
-                  "options": {
-                    "chart": {
-                      "metrics": [
-                        {
-                          "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
-                          "name": "performanceCounters/memoryAvailableBytes",
-                          "aggregationType": 4,
-                          "namespace": "microsoft.insights/components",
-                          "metricVisualization": {
-                            "displayName": "Available memory"
-                          }
-                        }
-                      ],
-                      "title": "Average available memory",
-                      "visualization": {
-                        "chartType": 2,
-                        "legendVisualization": {
-                          "isVisible": true,
-                          "position": 2,
-                          "hideSubtitle": false
-                        },
-                        "axisVisualization": {
-                          "x": {
-                            "isVisible": true,
-                            "axisType": 2
-                          },
-                          "y": {
-                            "isVisible": true,
-                            "axisType": 1
-                          }
-                        },
-                        "disablePinning": true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "10": {
-            "position": {
-              "x": 0,
-              "y": 17,
-              "colSpan": 12,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
@@ -1023,7 +1343,96 @@
                 },
                 {
                   "name": "Query",
-                  "value": "let apdexThreshhold = toint('3754');\nlet failureThreshhold = 1;\npageViews\n| where timestamp > ago(1d)\n| where name in ('*') or '*' in ('*')\n| extend success = columnifexists('success', true)\n| extend Failure = iff('ConsiderFailures' == 'ConsiderFailures' and success == false, 1, 0)\n| extend InterestingDimension = iff(isempty(name)== true, 'Unknown', name)\n| where InterestingDimension in ('*') or '*' in ('*')\n| summarize AverageDuration = avg(duration), Failures = sum(Failure) by user_Id, bin(timestamp, 30m)\n| extend UserExperience = case(AverageDuration <= apdexThreshhold, 'Satisfied', AverageDuration <= 4 * apdexThreshhold, 'Tolerating', 'Frustrated')\n| extend UserExperience = case(Failures >= failureThreshhold, \"Frustrated\", UserExperience)\n| summarize count() by UserExperience, timestamp\n"
+                  "value": "union pageViews,customEvents\n| where timestamp between((datetime(2020))..now())\n| summarize Users=dcount(user_Id) by client_OS , bin(timestamp, 1h)\n| order by timestamp asc\n| render barchart\n"
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "Users",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [
+                      {
+                        "name": "client_OS",
+                        "type": "string"
+                      }
+                    ],
+                    "aggregation": "Sum"
+                  }
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0"
+                },
+                {
+                  "name": "PartId",
+                  "value": "7b7d1642-306a-4987-8f14-aff6c405c52a"
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Users per Devices"
+                },
+                {
+                                            "name": "PartSubTitle",
+                                            "value": "[parameters('public-appInsightName')]"
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components"
+                },
+                {
+                  "name": "ControlType",
+                  "value": "AnalyticsChart"
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Bar"
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Users per Devices"
+                }
+              }
+            }
+          },
+          "16": {
+            "position": {
+              "x": 0,
+              "y": 25,
+              "colSpan": 12,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            }
+                },
+                {
+                  "name": "Query",
+                  "value": "let apdexThreshhold = toint('63');\nlet failureThreshhold = 1;\npageViews\n| where timestamp > ago(1d)\n| where name in ('*') or '*' in ('*')\n| extend success = columnifexists('success', true)\n| extend Failure = iff('ConsiderFailures' == 'ConsiderFailures' and success == false, 1, 0)\n| extend InterestingDimension = iff(isempty(name)== true, 'Unknown', name)\n| where InterestingDimension in ('*') or '*' in ('*')\n| summarize AverageDuration = avg(duration), Failures = sum(Failure) by user_Id, bin(timestamp, 30m)\n| extend UserExperience = case(AverageDuration <= apdexThreshhold, 'Satisfied', AverageDuration <= 4 * apdexThreshhold, 'Tolerating', 'Frustrated')\n| extend UserExperience = case(Failures >= failureThreshhold, \"Frustrated\", UserExperience)\n| summarize count() by UserExperience, timestamp\n"
                 },
                 {
                   "name": "Dimensions",
@@ -1053,7 +1462,7 @@
                 },
                 {
                   "name": "PartId",
-                  "value": "2d94edd9-d5a6-4141-a3e6-ed18f696ee27"
+                  "value": "14d03957-16ea-42a2-a911-475540414bce"
                 },
                 {
                   "name": "PartTitle",
@@ -1087,21 +1496,208 @@
               "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
               "settings": {
                 "content": {
-                  "PartTitle": "Quality Trends",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Bar"
+                  "PartTitle": "Quality Trends"
                 }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
               }
             }
           },
-          "11": {
+          "17": {
             "position": {
               "x": 12,
-              "y": 17,
+              "y": 25,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            }
+                },
+                {
+                  "name": "Query",
+                  "value": "union pageViews\n| where timestamp between((datetime(2020))..now())\n| summarize Users=dcount(user_Id) by tostring(parseurl(url)[\"Path\"]) , bin(timestamp, 1h)\n| order by timestamp asc\n| render barchart\n"
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "Users",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [
+                      {
+                        "name": "Path",
+                        "type": "string"
+                      }
+                    ],
+                    "aggregation": "Sum"
+                  }
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0"
+                },
+                {
+                  "name": "PartId",
+                  "value": "39f4d76b-136d-4f38-9f13-908ea009c907"
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Users per Page View"
+                },
+                {
+                                            "name": "PartSubTitle",
+                                            "value": "[parameters('public-appInsightName')]"
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components"
+                },
+                {
+                  "name": "ControlType",
+                  "value": "AnalyticsChart"
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Bar"
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Users per Page View"
+                }
+              }
+            }
+          },
+          "18": {
+            "position": {
+              "x": 0,
+              "y": 29,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "sharedTimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "DisplayName": "Server requests"
+                          }
+                        }
+                      ],
+                      "title": "Server requests",
+                      "titleKind": 2,
+                      "visualization": {
+                        "chartType": 2
+                      },
+                      "openBladeOnClick": {
+                        "openBlade": true,
+                        "destinationBlade": {
+                          "bladeName": "ResourceMenuBlade",
+                          "parameters": {
+                            "id": "[parameters('public-appInsight')]",
+                            "menuid": "performance"
+                          },
+                          "extensionName": "HubsExtension",
+                          "options": {
+                            "parameters": {
+                              "id": "[parameters('public-appInsight')]",
+                              "menuid": "performance"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "DisplayName": "Server requests"
+                          }
+                        }
+                      ],
+                      "title": "Server requests",
+                      "titleKind": 2,
+                      "visualization": {
+                        "chartType": 2,
+                        "disablePinning": true
+                      },
+                      "openBladeOnClick": {
+                        "openBlade": true,
+                        "destinationBlade": {
+                          "bladeName": "ResourceMenuBlade",
+                          "parameters": {
+                            "id": "[parameters('public-appInsight')]",
+                            "menuid": "performance"
+                          },
+                          "extensionName": "HubsExtension",
+                          "options": {
+                            "parameters": {
+                              "id": "[parameters('public-appInsight')]",
+                              "menuid": "performance"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "19": {
+            "position": {
+              "x": 6,
+              "y": 29,
               "colSpan": 6,
               "rowSpan": 4
             },
@@ -1114,11 +1710,233 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "displayName": "Failed requests",
+                            "color": "#EC008C"
+                          }
+                        }
+                      ],
+                      "title": "Failed requests",
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        }
+                      },
+                      "openBladeOnClick": {
+                        "openBlade": true,
+                        "destinationBlade": {
+                          "extensionName": "HubsExtension",
+                          "bladeName": "ResourceMenuBlade",
+                          "parameters": {
+                            "id": "[parameters('public-appInsight')]",
+                            "menuid": "failures"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "name": "sharedTimeRange",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "displayName": "Failed requests",
+                            "color": "#EC008C"
+                          }
+                        }
+                      ],
+                      "title": "Failed requests",
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        },
+                        "disablePinning": true
+                      },
+                      "openBladeOnClick": {
+                        "openBlade": true,
+                        "destinationBlade": {
+                          "extensionName": "HubsExtension",
+                          "bladeName": "ResourceMenuBlade",
+                          "parameters": {
+                            "id": "[parameters('public-appInsight')]",
+                            "menuid": "failures"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "20": {
+            "position": {
+              "x": 12,
+              "y": 29,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/duration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": {
+                            "displayName": "Server response time"
+                          }
+                        }
+                      ],
+                      "title": "Server response time",
+                      "titleKind": 1,
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        }
+                      }
+                    },
+                    "version": 2
+                  }
+                },
+                {
+                  "name": "sharedTimeRange",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "requests/duration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": {
+                            "displayName": "Server response time"
+                          }
+                        }
+                      ],
+                      "title": "Server response time",
+                      "titleKind": 1,
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        },
+                        "disablePinning": true
+                      }
+                    },
+                    "version": 2
+                  }
+                }
+              }
+            }
+          },
+          "21": {
+            "position": {
+              "x": 0,
+              "y": 33,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
                           "name": "performanceCounters/processCpuPercentage",
                           "aggregationType": 3,
-                          "namespace": "microsoft.insights/components",
+                          "namespace": "microsoft.insights/components/kusto",
                           "metricVisualization": {
                             "displayName": "CPU utilization"
                           }
@@ -1161,11 +1979,11 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                                                                "id": "[parameters('public-appInsight')]"
-                                                            },
+                            "id": "[parameters('public-appInsight')]"
+                          },
                           "name": "performanceCounters/processCpuPercentage",
                           "aggregationType": 3,
-                          "namespace": "microsoft.insights/components",
+                          "namespace": "microsoft.insights/components/kusto",
                           "metricVisualization": {
                             "displayName": "CPU utilization"
                           }
@@ -1199,471 +2017,119 @@
               }
             }
           },
-          "12": {
-            "position": {
-              "x": 0,
-              "y": 21,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
-                },
-                {
-                  "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=1h;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where operation_Name like \"GET /api/platform/security/users/id/\" ;\ndataset\n| summarize Sec=avg(duration/1000) by timestamp\n| render areachart with(title=\"Login API performance\", ytitle=\"Sec\", legend=visible)\n"
-                },
-                {
-                  "name": "Dimensions",
-                  "value": {
-                    "xAxis": {
-                      "name": "timestamp",
-                      "type": "datetime"
-                    },
-                    "yAxis": [
-                      {
-                        "name": "Sec",
-                        "type": "real"
-                      }
-                    ],
-                    "splitBy": [],
-                    "aggregation": "Sum"
-                  }
-                },
-                {
-                  "name": "Version",
-                  "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "1401d07b-9232-4a83-a944-2b9eac239f31"
-                },
-                {
-                  "name": "PartTitle",
-                  "value": "Login API performance"
-                },
-                {
-                  "name": "PartSubTitle",
-                  "value": ""
-                },
-                {
-                  "name": "resourceTypeMode",
-                  "value": "components"
-                },
-                {
-                  "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Line"
-                },
-                {
-                  "name": "TimeRange",
-                  "isOptional": true
-                },
-                {
-                  "name": "DashboardId",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
-              "settings": {
-                "content": {
-                  "PartTitle": "Login API performance",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Line"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
-              }
-            }
-          },
-          "13": {
+          "22": {
             "position": {
               "x": 6,
-              "y": 21,
+              "y": 33,
               "colSpan": 6,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "ComponentId",
+                  "name": "options",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
-                },
-                {
-                  "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=1h;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where operation_Name like \"GET /api/order/dashboardStatistics\" ;\ndataset\n| summarize Sec=avg(duration/1000) by timestamp\n| render areachart with(title=\"HomePage API performance\", ytitle=\"Sec\", legend=visible)\n"
-                },
-                {
-                  "name": "Dimensions",
-                  "value": {
-                    "xAxis": {
-                      "name": "timestamp",
-                      "type": "datetime"
-                    },
-                    "yAxis": [
-                      {
-                        "name": "Sec",
-                        "type": "real"
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "performanceCounters/memoryAvailableBytes",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "displayName": "Available memory"
+                          }
+                        }
+                      ],
+                      "title": "Average available memory",
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        }
                       }
-                    ],
-                    "splitBy": [],
-                    "aggregation": "Sum"
+                    }
                   }
                 },
                 {
-                  "name": "Version",
-                  "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "038f0cf7-8cde-4ae9-a13f-707db43ada18"
-                },
-                {
-                  "name": "PartTitle",
-                  "value": "HomePage API performance"
-                },
-                {
-                  "name": "PartSubTitle",
-                  "value": ""
-                },
-                {
-                  "name": "resourceTypeMode",
-                  "value": "components"
-                },
-                {
-                  "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Line"
-                },
-                {
-                  "name": "TimeRange",
-                  "isOptional": true
-                },
-                {
-                  "name": "DashboardId",
+                  "name": "sharedTimeRange",
                   "isOptional": true
                 }
               ],
-              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
               "settings": {
                 "content": {
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Line"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
-              }
-            }
-          },
-          "14": {
-            "position": {
-              "x": 12,
-              "y": 21,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
-                },
-                {
-                  "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=1h;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where operation_Name like \"POST /api/catalog/search/products\" ;\ndataset\n| summarize Sec=avg(duration/1000) by timestamp\n| render areachart with(title=\"Catalog API performance\", ytitle=\"Sec\", legend=visible)\n"
-                },
-                {
-                  "name": "Dimensions",
-                  "value": {
-                    "xAxis": {
-                      "name": "timestamp",
-                      "type": "datetime"
-                    },
-                    "yAxis": [
-                      {
-                        "name": "Sec",
-                        "type": "real"
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": {
+                            "id": "[parameters('public-appInsight')]"
+                          },
+                          "name": "performanceCounters/memoryAvailableBytes",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": {
+                            "displayName": "Available memory"
+                          }
+                        }
+                      ],
+                      "title": "Average available memory",
+                      "visualization": {
+                        "chartType": 2,
+                        "legendVisualization": {
+                          "isVisible": true,
+                          "position": 2,
+                          "hideSubtitle": false
+                        },
+                        "axisVisualization": {
+                          "x": {
+                            "isVisible": true,
+                            "axisType": 2
+                          },
+                          "y": {
+                            "isVisible": true,
+                            "axisType": 1
+                          }
+                        },
+                        "disablePinning": true
                       }
-                    ],
-                    "splitBy": [],
-                    "aggregation": "Sum"
+                    }
                   }
-                },
-                {
-                  "name": "Version",
-                  "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "13737f6e-1137-4e90-a241-4cfcf3b1156b"
-                },
-                {
-                  "name": "PartTitle",
-                  "value": "Catalog API performance"
-                },
-                {
-                  "name": "PartSubTitle",
-                  "value": ""
-                },
-                {
-                  "name": "resourceTypeMode",
-                  "value": "components"
-                },
-                {
-                  "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Line"
-                },
-                {
-                  "name": "TimeRange",
-                  "isOptional": true
-                },
-                {
-                  "name": "DashboardId",
-                  "isOptional": true
                 }
-              ],
-              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
-              "settings": {
-                "content": {
-                  "PartTitle": "Catalog API performance",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Line"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
               }
             }
           },
-          "15": {
+          "23": {
             "position": {
               "x": 0,
-              "y": 25,
+              "y": 37,
               "colSpan": 6,
               "rowSpan": 4
             },
             "metadata": {
               "inputs": [
                 {
-                  "name": "ComponentId",
-                  "value": {
+                                            "name": "ComponentId",
+                                            "value": {
                                                 "SubscriptionId": "[subscription().subscriptionId]",
                                                 "ResourceGroup": "[resourceGroup().name]",
                                                 "Name": "[parameters('public-appInsightName')]",
                                                 "ResourceId": "[parameters('public-appInsight')]"
-                                            }
-                },
-                {
-                  "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=1h;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where operation_Name like \"PUT /api/carts\" ;\ndataset\n| summarize Sec=avg(duration/1000) by timestamp\n| render areachart with(title=\"Cart API performance\", ytitle=\"Sec\", legend=visible)\n"
-                },
-                {
-                  "name": "Dimensions",
-                  "value": {
-                    "xAxis": {
-                      "name": "timestamp",
-                      "type": "datetime"
-                    },
-                    "yAxis": [
-                      {
-                        "name": "Sec",
-                        "type": "real"
-                      }
-                    ],
-                    "splitBy": [],
-                    "aggregation": "Sum"
-                  }
-                },
-                {
-                  "name": "Version",
-                  "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "1391d075-2dfd-4f7c-9712-09166f311c5d"
-                },
-                {
-                  "name": "PartTitle",
-                  "value": "Cart API performance"
-                },
-                {
-                  "name": "PartSubTitle",
-                  "value": ""
-                },
-                {
-                  "name": "resourceTypeMode",
-                  "value": "components"
-                },
-                {
-                  "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Line"
-                },
-                {
-                  "name": "TimeRange",
-                  "isOptional": true
-                },
-                {
-                  "name": "DashboardId",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
-              "settings": {
-                "content": {
-                  "PartTitle": "Cart API performance",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Line"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
-              }
-            }
-          },
-          "16": {
-            "position": {
-              "x": 6,
-              "y": 25,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
-                },
-                {
-                  "name": "Query",
-                  "value": "let start=datetime(2020);\nlet end=now();\nlet timeGrain=1h;\nlet dataset=requests\n| where timestamp > start and timestamp < end\n| where operation_Name like \"POST /api/order/customerOrders\" ;\ndataset\n| summarize Sec=avg(duration/1000) by timestamp\n| render areachart with(title=\"Create order API performance\", ytitle=\"Sec\", legend=visible)\n"
-                },
-                {
-                  "name": "Dimensions",
-                  "value": {
-                    "xAxis": {
-                      "name": "timestamp",
-                      "type": "datetime"
-                    },
-                    "yAxis": [
-                      {
-                        "name": "Sec",
-                        "type": "real"
-                      }
-                    ],
-                    "splitBy": [],
-                    "aggregation": "Sum"
-                  }
-                },
-                {
-                  "name": "Version",
-                  "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "0876c655-70e9-430f-b2a1-b9447132e0e9"
-                },
-                {
-                  "name": "PartTitle",
-                  "value": "Create order API performance"
-                },
-                {
-                  "name": "PartSubTitle",
-                  "value": ""
-                },
-                {
-                  "name": "resourceTypeMode",
-                  "value": "components"
-                },
-                {
-                  "name": "ControlType",
-                  "value": "AnalyticsChart"
-                },
-                {
-                  "name": "SpecificChart",
-                  "value": "Line"
-                },
-                {
-                  "name": "TimeRange",
-                  "isOptional": true
-                },
-                {
-                  "name": "DashboardId",
-                  "isOptional": true
-                }
-              ],
-              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
-              "settings": {
-                "content": {
-                  "PartTitle": "Create order API performance",
-                  "ControlType": "FrameControlChart",
-                  "SpecificChart": "Line"
-                }
-              },
-              "asset": {
-                "idInputName": "ComponentId",
-                "type": "ApplicationInsights"
-              }
-            }
-          },
-          "17": {
-            "position": {
-              "x": 0,
-              "y": 29,
-              "colSpan": 6,
-              "rowSpan": 4
-            },
-            "metadata": {
-              "inputs": [
-                {
-                  "name": "ComponentId",
-                  "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('admin-appInsightName')]",
-                                                "ResourceId": "[parameters('admin-appInsight')]"
                                             },
                   "isOptional": true
                 },
@@ -1675,12 +2141,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('admin-appInsightName')]",
-                                                "ResourceId": "[parameters('admin-appInsight')]"
-                                            }
+                    "[parameters('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -1706,12 +2167,203 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let start=datetime(2020);\\nlet end=now();\\nlet timeGrain=1h;\\nlet dataset=customEvents\\n    | where timestamp > start and timestamp < end\\n    | where name == \\\"LoginFullResponseTime\\\";\\ndataset\\n| summarize AVG=avg(customDimensions.duration/1000) by timestamp\\n//| summarize MAX=max(duration), AVG=avg(duration), MINIMUM=min(duration) by bin(timestamp, timeGrain)\\n| render areachart with(title=\\\"Users login performance\\\", legend=visible)\\n\",\"size\":1,\"aggregation\":2,\"title\":\"Users login performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":24,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiSecurityTokens/GenerateTokens\\\"\\r\\n    | extend durationSec = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC=avg(durationSec) by timestamp\\r\\n| render linechart with(title=\\\"Login page performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Login page performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}},\"mapSettings\":{\"locInfo\":\"LatLong\",\"sizeSettings\":\"SEC\",\"sizeAggregation\":\"Sum\",\"legendMetric\":\"SEC\",\"legendAggregation\":\"Sum\",\"itemColorSettings\":{\"type\":\"heatmap\",\"colorAggregation\":\"Sum\",\"nodeColorField\":\"SEC\",\"heatmapPalette\":\"greenRed\"}}}",
                   "isOptional": true
                 },
                 {
                   "name": "ParameterValues",
-                  "value": {},
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "24": {
+            "position": {
+              "x": 6,
+              "y": 37,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"PUT HotApiCarts/ReplaceLineItems\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize Sec=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Cart opertation performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Cart opertation performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Location",
+                  "value": "[resourceGroup().location]",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/PinnedNotebookQueryPart"
+            }
+          },
+          "25": {
+            "position": {
+              "x": 12,
+              "y": 37,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                                            "name": "ComponentId",
+                                            "value": {
+                                                "SubscriptionId": "[subscription().subscriptionId]",
+                                                "ResourceGroup": "[resourceGroup().name]",
+                                                "Name": "[parameters('public-appInsightName')]",
+                                                "ResourceId": "[parameters('public-appInsight')]"
+                                            },
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeContext",
+                  "value": null,
+                  "isOptional": true
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": [
+                    "[parameters('public-appInsight')]"
+                  ],
+                  "isOptional": true
+                },
+                {
+                  "name": "ConfigurationId",
+                  "value": "d9ad5faa-950d-46a0-a87c-1c516fd61e40",
+                  "isOptional": true
+                },
+                {
+                  "name": "Type",
+                  "value": "workbook",
+                  "isOptional": true
+                },
+                {
+                  "name": "GalleryResourceType",
+                  "value": "microsoft.insights/components",
+                  "isOptional": true
+                },
+                {
+                  "name": "PinName",
+                  "value": "DOT public custom metrics",
+                  "isOptional": true
+                },
+                {
+                  "name": "StepSettings",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain=1h;\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiCarts/CreateOrder\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize Sec=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Create order performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
+                  "isOptional": true
+                },
+                {
+                  "name": "ParameterValues",
+                  "value": {
+                    "TimeRange": {
+                      "type": 4,
+                      "value": {
+                        "durationMs": 86400000,
+                        "createdTime": "2020-12-08T12:09:37.741Z",
+                        "isInitialTime": false,
+                        "grain": 1,
+                        "useDashboardTimeRange": false
+                      },
+                      "formattedValue": "Last 24 hours",
+                      "isPending": false,
+                      "isWaiting": false,
+                      "isFailed": false,
+                      "labelValue": "Last 24 hours",
+                      "displayName": "TimeRange"
+                    }
+                  },
                   "isOptional": true
                 },
                 {
@@ -1746,29 +2398,38 @@
               "model": {
                 "format": "utc",
                 "granularity": "auto",
-                "relative": "30d"
+                "relative": "24h"
               },
               "displayCache": {
                 "name": "UTC Time",
-                "value": "Past 30 days"
+                "value": "Past 24 hours"
               },
               "filteredPartIds": [
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f4600a",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f4600c",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f4600e",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f46010",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46012",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f46014",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f46016",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46018",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f4601a",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f4601c",
-                "StartboardPart-MonitorChartPart-2553d587-dd97-48a0-bb70-eaa309f4601e",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46020",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46022",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46024",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46026",
-                "StartboardPart-AnalyticsPart-2553d587-dd97-48a0-bb70-eaa309f46028"
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e76",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e78",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e7a",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e7e",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e80",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e82",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e84",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e86",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e88",
+                "StartboardPart-LogsDashboardPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e8a",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e8c",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e8e",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e90",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e92",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e94",
+                "StartboardPart-AnalyticsPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e96",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e98",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e9a",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e9c",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6e9e",
+                "StartboardPart-MonitorChartPart-0c1da116-f5d8-4536-bbc4-ec8f850f6ea0",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6ea2",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6ea4",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6ea6",
+                "StartboardPart-PinnedNotebookQueryPart-0c1da116-f5d8-4536-bbc4-ec8f850f6ea8"
               ]
             }
           }
