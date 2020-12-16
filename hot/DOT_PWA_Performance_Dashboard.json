@@ -31,7 +31,7 @@
             "name": "[parameters('dashboards_name')]",
             "location": "[resourceGroup().location]",
             "tags": {
-                "hidden-title": "_"
+                "hidden-title": "[parameters('dashboards_name')]"
             },
             "properties": {
     "lenses": {
