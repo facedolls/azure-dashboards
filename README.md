@@ -1,0 +1,1 @@
+Azure AppInsights dashboard templates with custom requests and workbook routine.
