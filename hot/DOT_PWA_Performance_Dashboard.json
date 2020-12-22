@@ -2,38 +2,38 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "dashboards_name": {
-            "defaultValue": "DASHBOARD_NAME",
-            "type": "String"
+        "azureDashboardName": {
+            "type": "String",
+            "metadata": {
+              "description": "The name of dasboard to create"
+            }
         },
-		"public-appInsightName": {
-            "defaultValue": "STOREFRONT_APPINSIGHTS_NAME",
-            "type": "String"
+		"dashboardTitle": {
+			"type": "String",
+			"metadata": {
+				"description": "The title of the dasboard"
+			}
         },
-		"admin-appInsightName": {
-            "defaultValue": "PLATFORM_APPINSIGHTS_NAME",
-            "type": "String"
-        },
-        "public-appInsight": {
-            "defaultValue": "[concat(resourceGroup().id, '/providers/microsoft.insights/components/', parameters('public-appInsightName'))]",
-            "type": "String"
-        },
-		"admin-appInsight": {
-            "defaultValue": "[concat(resourceGroup().id, '/providers/microsoft.insights/components/', parameters('admin-appInsightName'))]",
-            "type": "String"
+		"appInsights_StoreFront": {
+            "type": "String",
+            "metadata": {
+              "description": "The name of application insights"
+            }
         }
     },
-    "variables": {},
+    "variables": {
+		"public-appInsight": "[concat(resourceGroup().id, '/providers/microsoft.insights/components/', parameters('appInsights_StoreFront'))]"
+	},
     "resources": [
         {
             "type": "Microsoft.Portal/dashboards",
 			"apiVersion": "2019-01-01-preview",
-            "name": "[parameters('dashboards_name')]",
+            "name": "[parameters('azureDashboardName')]",
             "location": "[resourceGroup().location]",
             "tags": {
-                "hidden-title": "[parameters('dashboards_name')]"
+                "hidden-title": "[parameters('azureDashboardName')]"
             },
-            "properties": {
+  "properties": {
     "lenses": {
       "0": {
         "order": 0,
@@ -51,7 +51,7 @@
               "settings": {
                 "content": {
                   "settings": {
-                    "content": "# DOT Storefront Performance Dashboard",
+                    "content": "# DOT RU Storefront Performance Dashboard",
                     "title": "",
                     "subtitle": "",
                     "markdownUri": null
@@ -72,11 +72,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -147,7 +147,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "availabilityResults/availabilityPercentage",
                           "aggregationType": 4,
@@ -182,7 +182,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "availability"
                           }
                         }
@@ -203,7 +203,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "availabilityResults/availabilityPercentage",
                           "aggregationType": 4,
@@ -239,7 +239,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "availability"
                           }
                         }
@@ -261,7 +261,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -272,7 +272,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -298,7 +298,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\nlet dataset=customEvents\\n    | where timestamp {TimeRange}\\n    | where name == \\\"LoginFullResponseTime\\\"\\n    | extend durationSec = round(tolong(customDimensions.duration)/1000, 3);\\ndataset\\n| summarize SEC_AVG=avg(durationSec), SEC_MIN=min(durationSec), SEC_MAX=max(durationSec) by bin(timestamp, timeGrain)\\n//| summarize MAX=max(duration), AVG=avg(customDimensions.duration/1000), MINIMUM=min(duration) by bin(timestamp, timeGrain)\\n| render linechart with(title=\\\"Users login performance\\\", legend=visible)\\n\",\"size\":1,\"aggregation\":3,\"title\":\"Users login performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain = {TimeGrain};\\nlet dataset=customEvents\\n    | where timestamp {TimeRange}\\n    | where name == \\\"LoginFullResponseTime\\\"\\n    | extend durationSec = round(todouble(customDimensions.duration)/1000, 3);\\ndataset\\n| summarize SEC_AVG=avg(durationSec), SEC_MIN=min(durationSec), SEC_MAX=max(durationSec) by bin(timestamp, timeGrain)\\n//| render linechart with(title=\\\"Users login performance\\\", legend=visible)\\n| render timechart\\n\",\"size\":1,\"aggregation\":3,\"title\":\"Users login performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -307,27 +307,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T06:49:04.847Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:21:13.274Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -353,7 +353,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -364,7 +364,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -390,7 +390,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=pageViews\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"HomePageLoadingTime\\\"\\r\\n    | extend duration = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n//| summarize SEC=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Users HomePage performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users HomePage performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=pageViews\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"HomePageLoadingTime\\\"\\r\\n    | extend duration = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n//| summarize SEC=avg(duration) by timestamp\\r\\n| render linechart with(title=\\\"Users HomePage performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users HomePage performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"ySettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -399,27 +399,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -444,7 +444,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -455,7 +455,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -481,7 +481,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"CatalogLoadingTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users Catalog browsing performance\\\",ytitle=\\\"Sec\\\")\",\"size\":0,\"aggregation\":3,\"title\":\"Users Catalog browsing performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"CatalogLoadingTime\\\"\\r\\n    | extend duration = round(todouble(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users Catalog browsing performance\\\",ytitle=\\\"Sec\\\")\",\"size\":0,\"aggregation\":3,\"title\":\"Users Catalog browsing performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -490,27 +490,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -535,7 +535,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -546,7 +546,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -572,7 +572,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name contains \\\"CartChanged\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000, 3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users Cart operation performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users Cart operation performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name contains \\\"CartChanged\\\"\\r\\n    | extend duration = round(todouble(customDimensions.duration) / 1000, 3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users Cart operation performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users Cart operation performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -581,27 +581,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -626,7 +626,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -637,7 +637,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -663,7 +663,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateResponseTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users checkout performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users checkout performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateResponseTime\\\"\\r\\n    | extend duration = round(todouble(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users checkout performance\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users checkout performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -672,27 +672,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -717,7 +717,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -728,7 +728,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -754,7 +754,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateFullResponseTime\\\"\\r\\n    | extend duration = round(tolong(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users create order performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=customEvents\\r\\n    | where timestamp {TimeRange}\\r\\n    | where name == \\\"OrderCreateFullResponseTime\\\"\\r\\n    | extend duration = round(todouble(customDimensions.duration) / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Users create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Users create order performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -763,27 +763,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -808,7 +808,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -819,7 +819,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -845,7 +845,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nunion pageViews, dependencies, customEvents\\r\\n| where timestamp {TimeRange}\\r\\n| where name == 'CheckoutButtonClick' or name == 'ProductItemClick' or name == 'BrandItemClick' or name == 'SearchKeyword' or name == 'CartTotal'\\r\\n| project operation_Id, timestamp, itemType, name, url, duration, client_Type, customDimensions, customMeasurements, user_Id\\r\\n| extend click = (name == 'CheckoutButtonClick')\\r\\n| summarize Click=count(click) by bin(timestamp, timeGrain)\\r\\n| render columnchart with(title=\\\"Checkout button click \\\", ytitle='Count', ysplit=panels, legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"CheckoutButtonClick\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nunion pageViews, dependencies, customEvents\\r\\n| where timestamp {TimeRange}\\r\\n| where name == 'CheckoutButtonClick' or name == 'ProductItemClick' or name == 'BrandItemClick' or name == 'SearchKeyword' or name == 'CartTotal'\\r\\n| project operation_Id, timestamp, itemType, name, url, duration, client_Type, customDimensions, customMeasurements, user_Id\\r\\n| extend click = (name == 'CheckoutButtonClick')\\r\\n| summarize Click=count(click) by bin(timestamp, timeGrain)\\r\\n| render columnchart with(title=\\\"Checkout button click \\\", ytitle='Count', ysplit=panels, legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"CheckoutButtonClick\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
                   "isOptional": true
                 },
                 {
@@ -854,27 +854,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -904,7 +904,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "users/count",
                           "aggregationType": 5,
@@ -951,7 +951,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "users/count",
                           "aggregationType": 5,
@@ -1001,11 +1001,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            },
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  },
                   "isOptional": true
                 },
                 {
@@ -1081,7 +1081,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]",
+                  "value": "[parameters('appInsights_StoreFront')]",
                   "isOptional": true
                 }
               ],
@@ -1105,11 +1105,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1129,7 +1129,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]"
+                  "value": "[parameters('appInsights_StoreFront')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -1191,11 +1191,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1232,7 +1232,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]"
+                  "value": "[parameters('appInsights_StoreFront')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -1275,11 +1275,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1364,11 +1364,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1410,7 +1410,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]"
+                  "value": "[parameters('appInsights_StoreFront')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -1453,11 +1453,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1542,11 +1542,11 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                                                "SubscriptionId": "[subscription().subscriptionId]",
-                                                "ResourceGroup": "[resourceGroup().name]",
-                                                "Name": "[parameters('public-appInsightName')]",
-                                                "ResourceId": "[parameters('public-appInsight')]"
-                                            }
+                    "SubscriptionId": "[subscription().subscriptionId]",
+                    "ResourceGroup": "[resourceGroup().name]",
+                    "Name": "[parameters('appInsights_StoreFront')]",
+                    "ResourceId": "[variables('public-appInsight')]"
+                  }
                 },
                 {
                   "name": "Query",
@@ -1588,7 +1588,7 @@
                 },
                 {
                   "name": "PartSubTitle",
-                  "value": "[parameters('public-appInsightName')]"
+                  "value": "[parameters('appInsights_StoreFront')]"
                 },
                 {
                   "name": "resourceTypeMode",
@@ -1639,7 +1639,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/count",
                           "aggregationType": 7,
@@ -1659,13 +1659,13 @@
                         "destinationBlade": {
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "performance"
                           },
                           "extensionName": "HubsExtension",
                           "options": {
                             "parameters": {
-                              "id": "[parameters('public-appInsight')]",
+                              "id": "[variables('public-appInsight')]",
                               "menuid": "performance"
                             }
                           }
@@ -1684,7 +1684,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/count",
                           "aggregationType": 7,
@@ -1705,13 +1705,13 @@
                         "destinationBlade": {
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "performance"
                           },
                           "extensionName": "HubsExtension",
                           "options": {
                             "parameters": {
-                              "id": "[parameters('public-appInsight')]",
+                              "id": "[variables('public-appInsight')]",
                               "menuid": "performance"
                             }
                           }
@@ -1739,7 +1739,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/failed",
                           "aggregationType": 7,
@@ -1775,7 +1775,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "failures"
                           }
                         }
@@ -1796,7 +1796,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/failed",
                           "aggregationType": 7,
@@ -1833,7 +1833,7 @@
                           "extensionName": "HubsExtension",
                           "bladeName": "ResourceMenuBlade",
                           "parameters": {
-                            "id": "[parameters('public-appInsight')]",
+                            "id": "[variables('public-appInsight')]",
                             "menuid": "failures"
                           }
                         }
@@ -1860,7 +1860,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/duration",
                           "aggregationType": 4,
@@ -1907,7 +1907,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "requests/duration",
                           "aggregationType": 4,
@@ -1961,7 +1961,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "performanceCounters/processCpuPercentage",
                           "aggregationType": 3,
@@ -2008,7 +2008,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "performanceCounters/processCpuPercentage",
                           "aggregationType": 3,
@@ -2062,7 +2062,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "performanceCounters/memoryAvailableBytes",
                           "aggregationType": 4,
@@ -2107,7 +2107,7 @@
                       "metrics": [
                         {
                           "resourceMetadata": {
-                            "id": "[parameters('public-appInsight')]"
+                            "id": "[variables('public-appInsight')]"
                           },
                           "name": "performanceCounters/memoryAvailableBytes",
                           "aggregationType": 4,
@@ -2154,7 +2154,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -2165,7 +2165,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -2191,7 +2191,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiSecurityTokens/GenerateTokens\\\"\\r\\n    | extend durationSec = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(durationSec), SEC_MIN=min(durationSec), SEC_MAX=max(durationSec) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Login page performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Login page performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}},\"mapSettings\":{\"locInfo\":\"LatLong\",\"sizeSettings\":\"SEC\",\"sizeAggregation\":\"Sum\",\"legendMetric\":\"SEC\",\"legendAggregation\":\"Sum\",\"itemColorSettings\":{\"type\":\"heatmap\",\"colorAggregation\":\"Sum\",\"nodeColorField\":\"SEC\",\"heatmapPalette\":\"greenRed\"}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiSecurityTokens/GenerateTokens\\\"\\r\\n    | extend durationSec = round(duration/1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(durationSec), SEC_MIN=min(durationSec), SEC_MAX=max(durationSec) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Login page performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Login page performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}},\"mapSettings\":{\"locInfo\":\"LatLong\",\"sizeSettings\":\"SEC\",\"sizeAggregation\":\"Sum\",\"legendMetric\":\"SEC\",\"legendAggregation\":\"Sum\",\"itemColorSettings\":{\"type\":\"heatmap\",\"colorAggregation\":\"Sum\",\"nodeColorField\":\"SEC\",\"heatmapPalette\":\"greenRed\"}}}",
                   "isOptional": true
                 },
                 {
@@ -2200,27 +2200,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -2245,7 +2245,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -2256,7 +2256,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -2282,7 +2282,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"PUT HotApiCarts/ReplaceLineItems\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Cart opertation performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Cart opertation performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"PUT HotApiCarts/ReplaceLineItems\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Cart opertation performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Cart opertation performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"chartSettings\":{\"xAxis\":\"timestamp\",\"xSettings\":{\"numberFormatSettings\":{\"unit\":0,\"options\":{\"style\":\"decimal\",\"useGrouping\":true}}}}}",
                   "isOptional": true
                 },
                 {
@@ -2291,27 +2291,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -2336,7 +2336,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": "[parameters('public-appInsight')]",
+                  "value": "[variables('public-appInsight')]",
                   "isOptional": true
                 },
                 {
@@ -2347,7 +2347,7 @@
                 {
                   "name": "ResourceIds",
                   "value": [
-                    "[parameters('public-appInsight')]"
+                    "[variables('public-appInsight')]"
                   ],
                   "isOptional": true
                 },
@@ -2373,7 +2373,7 @@
                 },
                 {
                   "name": "StepSettings",
-                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiCarts/CreateOrder\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Create order performance\",\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
+                  "value": "{\"version\":\"KqlItem/1.0\",\"query\":\"let timeGrain={TimeGrain};\\r\\nlet dataset=requests\\r\\n    | where timestamp {TimeRange}\\r\\n    | where operation_Name like \\\"POST HotApiCarts/CreateOrder\\\"\\r\\n    | extend duration = round(duration / 1000,3);\\r\\ndataset\\r\\n| summarize SEC_AVG=avg(duration), SEC_MIN=min(duration), SEC_MAX=max(duration) by bin(timestamp, timeGrain)\\r\\n| render linechart with(title=\\\"Create order performance\\\", ytitle=\\\"Sec\\\", legend=visible)\\r\\n\",\"size\":0,\"aggregation\":3,\"title\":\"Create order performance\",\"timeContext\":{\"durationMs\":2592000000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"}",
                   "isOptional": true
                 },
                 {
@@ -2382,27 +2382,27 @@
                     "TimeRange": {
                       "type": 4,
                       "value": {
-                        "durationMs": 86400000,
-                        "createdTime": "2020-12-16T09:17:40.091Z",
+                        "durationMs": 2592000000,
+                        "createdTime": "2020-12-22T16:22:40.04Z",
                         "isInitialTime": false,
                         "grain": 1,
                         "useDashboardTimeRange": false
                       },
-                      "formattedValue": "Last 24 hours",
+                      "formattedValue": "Last 30 days",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "Last 24 hours",
+                      "labelValue": "Last 30 days",
                       "displayName": "TimeRange"
                     },
                     "TimeGrain": {
                       "type": 1,
-                      "value": "20min",
-                      "formattedValue": "20min",
+                      "value": "15min",
+                      "formattedValue": "15min",
                       "isPending": false,
                       "isWaiting": false,
                       "isFailed": false,
-                      "labelValue": "20min",
+                      "labelValue": "15min",
                       "displayName": "TimeGrain"
                     }
                   },
@@ -2446,31 +2446,6 @@
                 "value": "Past 24 hours"
               },
               "filteredPartIds": [
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f1ea",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f1ec",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1ee",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1f0",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1f2",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1f4",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1f6",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1f8",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f1fa",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f1fc",
-                "StartboardPart-LogsDashboardPart-9c84a870-57df-4fd7-9139-770e6116f1fe",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f200",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f202",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f204",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f206",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f208",
-                "StartboardPart-AnalyticsPart-9c84a870-57df-4fd7-9139-770e6116f20a",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f20c",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f20e",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f210",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f212",
-                "StartboardPart-MonitorChartPart-9c84a870-57df-4fd7-9139-770e6116f214",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f216",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f218",
-                "StartboardPart-PinnedNotebookQueryPart-9c84a870-57df-4fd7-9139-770e6116f21a"
               ]
             }
           }
