@@ -51,7 +51,7 @@
               "settings": {
                 "content": {
                   "settings": {
-                    "content": "# DOT RU Storefront Performance Dashboard",
+                    "content": "[parameters('dashboardTitle')]",
                     "title": "",
                     "subtitle": "",
                     "markdownUri": null
@@ -85,10 +85,6 @@
                 {
                   "name": "Version",
                   "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "12bb2791-8a90-4cfa-bb1d-784b3f9ac67b"
                 },
                 {
                   "name": "PartTitle",
@@ -293,7 +289,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -385,7 +381,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -476,7 +472,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -567,7 +563,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -658,7 +654,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -749,7 +745,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -840,7 +836,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -1032,11 +1028,6 @@
                   "isOptional": true
                 },
                 {
-                  "name": "PartId",
-                  "value": "8750b5c6-1db8-4309-84ba-a626a2786d5f",
-                  "isOptional": true
-                },
-                {
                   "name": "Version",
                   "value": "1.0",
                   "isOptional": true
@@ -1118,10 +1109,6 @@
                 {
                   "name": "Version",
                   "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "81cb5882-2e65-4cae-b4e7-db1036858399"
                 },
                 {
                   "name": "PartTitle",
@@ -1223,10 +1210,6 @@
                   "value": "1.0"
                 },
                 {
-                  "name": "PartId",
-                  "value": "674ba85c-4e44-4fd0-b542-2a9ae2009456"
-                },
-                {
                   "name": "PartTitle",
                   "value": "Users per Browser"
                 },
@@ -1310,10 +1293,6 @@
                 {
                   "name": "Version",
                   "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "12253ea3-12be-49af-8b43-87af99725dc6"
                 },
                 {
                   "name": "PartTitle",
@@ -1401,10 +1380,6 @@
                   "value": "1.0"
                 },
                 {
-                  "name": "PartId",
-                  "value": "7b7d1642-306a-4987-8f14-aff6c405c52a"
-                },
-                {
                   "name": "PartTitle",
                   "value": "Users per Devices"
                 },
@@ -1490,10 +1465,6 @@
                   "value": "1.0"
                 },
                 {
-                  "name": "PartId",
-                  "value": "14d03957-16ea-42a2-a911-475540414bce"
-                },
-                {
                   "name": "PartTitle",
                   "value": "Quality Trends"
                 },
@@ -1577,10 +1548,6 @@
                 {
                   "name": "Version",
                   "value": "1.0"
-                },
-                {
-                  "name": "PartId",
-                  "value": "39f4d76b-136d-4f38-9f13-908ea009c907"
                 },
                 {
                   "name": "PartTitle",
@@ -2186,7 +2153,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -2277,7 +2244,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
@@ -2368,7 +2335,7 @@
                 },
                 {
                   "name": "PinName",
-                  "value": "DOT public custom metrics",
+                  "value": "[parameters('azureDashboardName')]",
                   "isOptional": true
                 },
                 {
